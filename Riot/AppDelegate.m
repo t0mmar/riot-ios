@@ -1151,8 +1151,10 @@ NSString *const kAppDelegateNetworkStatusDidChangeNotification = @"kAppDelegateN
         if (roomId.length)
         {
             NSArray* mxAccounts = [MXKAccountManager sharedManager].activeAccounts;
+
             MXRoom* room = nil;
-            for (MXKAccount* account in mxAccounts)
+            MXKAccount* account;
+            for (account in mxAccounts)
             {
                 room = [account.mxSession roomWithRoomId:roomId];
                 if (room)
@@ -1169,8 +1171,12 @@ NSString *const kAppDelegateNetworkStatusDidChangeNotification = @"kAppDelegateN
                 NSString* responseText = [responseInfo objectForKey:UIUserNotificationActionResponseTypedTextKey];
                 if (responseText != nil && responseText.length != 0)
                 {
+
+                    MXKRoomDataSourceManager *roomDataSourceManager = [MXKRoomDataSourceManager sharedManagerForMatrixSession:account.mxSession];
+                    MXKRoomDataSource *roomDataSource = [roomDataSourceManager roomDataSourceForRoom:room.roomId create:YES];
+
                     NSLog(@"[AppDelegate][Push] handleActionWithIdentifier: sending message to room: %@", roomId);
-                    [room sendTextMessage:responseText success:^(NSString* eventId) {} failure:^(NSError* error) {
+                    [roomDataSource sendTextMessage:responseText success:^(NSString* eventId) {} failure:^(NSError* error) {
                         NSLog(@"[AppDelegate][Push] handleActionWithIdentifier: error sending text message: %@", error);
                     }];
                 }
