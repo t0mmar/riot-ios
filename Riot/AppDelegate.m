@@ -1157,7 +1157,7 @@ NSString *const kAppDelegateNetworkStatusDidChangeNotification = @"kAppDelegateN
                 MXKRoomDataSourceManager* manager = [MXKRoomDataSourceManager sharedManagerForMatrixSession:account.mxSession];
                 if (manager)
                 {
-                    roomDataSource = [manager roomDataSourceForRoom:roomId create:false];
+                    roomDataSource = [manager roomDataSourceForRoom:roomId create:YES];
                     if (roomDataSource)
                     {
                         break;
