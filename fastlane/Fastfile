@@ -19,7 +19,8 @@ platform :ios do
 
     before_all do
         # Ensure used Xcode version
-        xcversion(version: "~> 9.4.1")
+        # No more require for the moment
+        #xcversion(version: "~> 9.4.1")
     end
 
     #### Public ####
