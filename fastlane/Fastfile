@@ -71,7 +71,8 @@ platform :ios do
 
         # Generate xcodebuild additional arguments
         xcargs_hash = {
-            'GCC_PREPROCESSOR_DEFINITIONS' => "$(GCC_PREPROCESSOR_DEFINITIONS) #{additional_preprocessor_definitions}"
+            'GCC_PREPROCESSOR_DEFINITIONS' => "$(GCC_PREPROCESSOR_DEFINITIONS) #{additional_preprocessor_definitions}",
+            '-UseModernBuildSystem' => "NO" # Use legacy build workspace setting to build project with Xcode 10 & Cocoapods 1.6.0.beta.2
         }
 
         xcargs = xcargs_hash.map { |k,v| "#{k}=#{v.shellescape}" }.join(' ')
