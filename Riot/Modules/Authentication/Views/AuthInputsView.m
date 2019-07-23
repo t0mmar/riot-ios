@@ -814,8 +814,24 @@
             else if ([self isFlowSupported:kMXLoginFlowTypeTerms] && ![self isFlowCompleted:kMXLoginFlowTypeTerms])
             {
                 NSLog(@"[AuthInputsView] Prepare a new terms stage");
-
-                [self prepareParameters:callback];
+                
+                if (externalRegistrationParameters)
+                {
+                    [self displayTermsView:^{
+                        
+                        NSDictionary *parameters = @{
+                                                     @"auth": @{
+                                                             @"session":self->currentSession.session,
+                                                             @"type": kMXLoginFlowTypeTerms
+                                                             }
+                                                     };
+                        callback(parameters, nil);
+                    }];
+                }
+                else
+                {
+                    [self prepareParameters:callback];
+                }
 
                 return;
             }
@@ -848,7 +864,7 @@
     
     if (restClient)
     {
-        // Sanity check on home server
+        // Sanity check on homeserver
         id hs_url = registrationParameters[@"hs_url"];
         if (hs_url && [hs_url isKindOfClass:NSString.class])
         {
