@@ -117,11 +117,15 @@ final class RoomContextualMenuViewController: UIViewController, Themable {
     func showMenuToolbar() {
         self.menuToolbarViewBottomConstraint.constant = 0
         self.menuToolbarView.alpha = 1
+        
+        // Force VoiceOver to focus on the menu bar actions
+        UIAccessibility.post(notification: .screenChanged, argument: self.menuToolbarView)
     }
     
     func hideMenuToolbar() {
         self.menuToolbarViewBottomConstraint.constant = self.hiddenToolbarViewBottomConstant
         self.menuToolbarView.alpha = 0
+        UIAccessibility.post(notification: .screenChanged, argument: nil)
     }
     
     func prepareReactionsMenuAnimations() {
@@ -201,6 +205,7 @@ final class RoomContextualMenuViewController: UIViewController, Themable {
     
     func update(theme: Theme) {
         self.menuToolbarView.update(theme: theme)
+        self.reactionsMenuView?.update(theme: theme)
     }
     
     // MARK: - Private
@@ -225,6 +230,7 @@ final class RoomContextualMenuViewController: UIViewController, Themable {
         if self.reactionsMenuContainerView.subviews.isEmpty {
             let reactionsMenuView = ReactionsMenuView.loadFromNib()
             self.reactionsMenuContainerView.vc_addSubViewMatchingParent(reactionsMenuView)
+            reactionsMenuView.update(theme: self.theme)
             self.reactionsMenuView = reactionsMenuView
         }
         

@@ -2100,6 +2100,11 @@ NSString *const kAppDelegateNetworkStatusDidChangeNotification = @"kAppDelegateN
     
     // iOS Patch: fix vector.im urls before using it
     webURL = [Tools fixURLWithSeveralHashKeys:webURL];
+
+    if ([webURL.path hasPrefix:@"/config"])
+    {
+        return [self handleServerProvionningLink:webURL];
+    }
     
     // Manage email validation link
     if ([webURL.path isEqualToString:@"/_matrix/identity/api/v1/validate/email/submitToken"])
@@ -2547,6 +2552,93 @@ NSString *const kAppDelegateNetworkStatusDidChangeNotification = @"kAppDelegateN
     *outQueryParams = queryParams;
 }
 
+
+- (BOOL)handleServerProvionningLink:(NSURL*)link
+{
+    NSLog(@"[AppDelegate] handleServerProvionningLink: %@", link);
+
+    NSString *homeserver, *identityServer;
+    [self parseServerProvionningLink:link homeserver:&homeserver identityServer:&identityServer];
+
+    if (homeserver)
+    {
+        if ([MXKAccountManager sharedManager].activeAccounts.count)
+        {
+            [self displayServerProvionningLinkBuyAlreadyLoggedInAlertWithCompletion:^(BOOL logout) {
+
+                NSLog(@"[AppDelegate] handleServerProvionningLink: logoutWithConfirmation: logout: %@", @(logout));
+                if (logout)
+                {
+                    [self logoutWithConfirmation:NO completion:^(BOOL isLoggedOut) {
+                        [self handleServerProvionningLink:link];
+                    }];
+                }
+            }];
+        }
+        else
+        {
+            [_masterTabBarController showAuthenticationScreen];
+            [_masterTabBarController.authViewController showCustomHomeserver:homeserver andIdentityServer:identityServer];
+        }
+
+        return YES;
+    }
+
+    return NO;
+}
+
+- (void)parseServerProvionningLink:(NSURL*)link homeserver:(NSString**)homeserver identityServer:(NSString**)identityServer
+{
+    if ([link.path isEqualToString:@"/config/config"])
+    {
+        NSURLComponents *linkURLComponents = [NSURLComponents componentsWithURL:link resolvingAgainstBaseURL:NO];
+        for (NSURLQueryItem *item in linkURLComponents.queryItems)
+        {
+            if ([item.name isEqualToString:@"hs_url"])
+            {
+                *homeserver = item.value;
+            }
+            else if ([item.name isEqualToString:@"is_url"])
+            {
+                *identityServer = item.value;
+                break;
+            }
+        }
+    }
+    else
+    {
+        NSLog(@"[AppDelegate] parseServerProvionningLink: Error: Unknown path: %@", link.path);
+    }
+
+
+    NSLog(@"[AppDelegate] parseServerProvionningLink: homeserver: %@ - identityServer: %@", *homeserver, *identityServer);
+}
+
+- (void)displayServerProvionningLinkBuyAlreadyLoggedInAlertWithCompletion:(void (^)(BOOL logout))completion
+{
+    // Ask confirmation
+    self.logoutConfirmation = [UIAlertController alertControllerWithTitle:NSLocalizedStringFromTable(@"error_user_already_logged_in", @"Vector", nil) message:nil preferredStyle:UIAlertControllerStyleAlert];
+
+    [self.logoutConfirmation addAction:[UIAlertAction actionWithTitle:NSLocalizedStringFromTable(@"settings_sign_out", @"Vector", nil)
+                                                                style:UIAlertActionStyleDefault
+                                                              handler:^(UIAlertAction * action)
+                                        {
+                                            self.logoutConfirmation = nil;
+                                            completion(YES);
+                                        }]];
+
+    [self.logoutConfirmation addAction:[UIAlertAction actionWithTitle:[NSBundle mxk_localizedStringForKey:@"cancel"]
+                                                                style:UIAlertActionStyleCancel
+                                                              handler:^(UIAlertAction * action)
+                                        {
+                                            self.logoutConfirmation = nil;
+                                            completion(NO);
+                                        }]];
+
+    [self.logoutConfirmation mxk_setAccessibilityIdentifier: @"AppDelegateLogoutConfirmationAlert"];
+    [self showNotificationAlert:self.logoutConfirmation];
+}
+
 #pragma mark - Matrix sessions handling
 
 - (void)initMatrixSessions
@@ -2770,7 +2862,10 @@ NSString *const kAppDelegateNetworkStatusDidChangeNotification = @"kAppDelegateN
         
         // Remove inApp notifications toggle change
         MXKAccount *account = notif.object;
-        [account removeObserver:self forKeyPath:@"enableInAppNotifications"];
+        if (!account.isSoftLogout)
+        {
+            [account removeObserver:self forKeyPath:@"enableInAppNotifications"];
+        }
 
         // Clear Modular data
         [[WidgetManager sharedManager] deleteDataForUser:account.mxCredentials.userId];
@@ -2780,6 +2875,16 @@ NSString *const kAppDelegateNetworkStatusDidChangeNotification = @"kAppDelegateN
         {
             [self logoutWithConfirmation:NO completion:nil];
         }
+    }];
+
+    // Add observer to handle soft logout
+    [[NSNotificationCenter defaultCenter] addObserverForName:kMXKAccountManagerDidSoftlogoutAccountNotification  object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *notif) {
+
+        MXKAccount *account = notif.object;
+        [self removeMatrixSession:account.mxSession];
+
+        // Return to authentication screen
+        [self.masterTabBarController showAuthenticationScreenAfterSoftLogout:account.mxCredentials];
     }];
     
     [[NSNotificationCenter defaultCenter] addObserverForName:kMXSessionIgnoredUsersDidChangeNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull notif) {

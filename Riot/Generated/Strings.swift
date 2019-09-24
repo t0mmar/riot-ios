@@ -226,6 +226,50 @@ internal enum VectorL10n {
   internal static var authSkip: String { 
     return VectorL10n.tr("Vector", "auth_skip") 
   }
+  /// Clear personal data
+  internal static var authSoftlogoutClearData: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_clear_data") 
+  }
+  /// Clear all data
+  internal static var authSoftlogoutClearDataButton: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_clear_data_button") 
+  }
+  /// Warning: Your personal data (including encryption keys) is still stored on this device.
+  internal static var authSoftlogoutClearDataMessage1: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_clear_data_message_1") 
+  }
+  /// Clear it if you're finished using this device, or want to sign in to another account.
+  internal static var authSoftlogoutClearDataMessage2: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_clear_data_message_2") 
+  }
+  /// Sign out
+  internal static var authSoftlogoutClearDataSignOut: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_clear_data_sign_out") 
+  }
+  /// Are you sure you want to clear all data currently stored on this device? Sign in again to access your account data and messages.
+  internal static var authSoftlogoutClearDataSignOutMsg: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_clear_data_sign_out_msg") 
+  }
+  /// Are you sure?
+  internal static var authSoftlogoutClearDataSignOutTitle: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_clear_data_sign_out_title") 
+  }
+  /// Your homeserver (%1$@) admin has signed you out of your account %2$@ (%3$@).
+  internal static func authSoftlogoutReason(_ p1: String, _ p2: String, _ p3: String) -> String {
+    return VectorL10n.tr("Vector", "auth_softlogout_reason", p1, p2, p3)
+  }
+  /// Sign in to recover encryption keys stored exclusively on this device. You need them to read all of your secure messages on any device.
+  internal static var authSoftlogoutRecoverEncryptionKeys: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_recover_encryption_keys") 
+  }
+  /// Sign In
+  internal static var authSoftlogoutSignIn: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_sign_in") 
+  }
+  /// You’re signed out
+  internal static var authSoftlogoutSignedOut: String { 
+    return VectorL10n.tr("Vector", "auth_softlogout_signed_out") 
+  }
   /// Submit
   internal static var authSubmit: String { 
     return VectorL10n.tr("Vector", "auth_submit") 
@@ -329,6 +373,10 @@ internal enum VectorL10n {
   /// %@ doesn't have permission to use Camera, please change privacy settings
   internal static func cameraAccessNotGranted(_ p1: String) -> String {
     return VectorL10n.tr("Vector", "camera_access_not_granted", p1)
+  }
+  /// The camera is unavailable on your device
+  internal static var cameraUnavailable: String { 
+    return VectorL10n.tr("Vector", "camera_unavailable") 
   }
   /// Cancel
   internal static var cancel: String { 
@@ -870,6 +918,42 @@ internal enum VectorL10n {
   internal static var e2eRoomKeyRequestTitle: String { 
     return VectorL10n.tr("Vector", "e2e_room_key_request_title") 
   }
+  /// Activities
+  internal static var emojiPickerActivityCategory: String { 
+    return VectorL10n.tr("Vector", "emoji_picker_activity_category") 
+  }
+  /// Flags
+  internal static var emojiPickerFlagsCategory: String { 
+    return VectorL10n.tr("Vector", "emoji_picker_flags_category") 
+  }
+  /// Food & Drink
+  internal static var emojiPickerFoodsCategory: String { 
+    return VectorL10n.tr("Vector", "emoji_picker_foods_category") 
+  }
+  /// Animals & Nature
+  internal static var emojiPickerNatureCategory: String { 
+    return VectorL10n.tr("Vector", "emoji_picker_nature_category") 
+  }
+  /// Objects
+  internal static var emojiPickerObjectsCategory: String { 
+    return VectorL10n.tr("Vector", "emoji_picker_objects_category") 
+  }
+  /// Smileys & People
+  internal static var emojiPickerPeopleCategory: String { 
+    return VectorL10n.tr("Vector", "emoji_picker_people_category") 
+  }
+  /// Travel & Places
+  internal static var emojiPickerPlacesCategory: String { 
+    return VectorL10n.tr("Vector", "emoji_picker_places_category") 
+  }
+  /// Symbols
+  internal static var emojiPickerSymbolsCategory: String { 
+    return VectorL10n.tr("Vector", "emoji_picker_symbols_category") 
+  }
+  /// Reactions
+  internal static var emojiPickerTitle: String { 
+    return VectorL10n.tr("Vector", "emoji_picker_title") 
+  }
   /// Send an encrypted message…
   internal static var encryptedRoomMessagePlaceholder: String { 
     return VectorL10n.tr("Vector", "encrypted_room_message_placeholder") 
@@ -877,6 +961,10 @@ internal enum VectorL10n {
   /// Send an encrypted reply…
   internal static var encryptedRoomMessageReplyToPlaceholder: String { 
     return VectorL10n.tr("Vector", "encrypted_room_message_reply_to_placeholder") 
+  }
+  /// It looks like you’re trying to connect to another homeserver. Do you want to sign out?
+  internal static var errorUserAlreadyLoggedIn: String { 
+    return VectorL10n.tr("Vector", "error_user_already_logged_in") 
   }
   /// VoIP conference added by %@
   internal static func eventFormatterJitsiWidgetAdded(_ p1: String) -> String {
@@ -1029,6 +1117,14 @@ internal enum VectorL10n {
   /// Could not connect to the homeserver.
   internal static var homeserverConnectionLost: String { 
     return VectorL10n.tr("Vector", "homeserver_connection_lost") 
+  }
+  /// Take photo
+  internal static var imagePickerActionCamera: String { 
+    return VectorL10n.tr("Vector", "image_picker_action_camera") 
+  }
+  /// Choose from library
+  internal static var imagePickerActionLibrary: String { 
+    return VectorL10n.tr("Vector", "image_picker_action_library") 
   }
   /// Invite
   internal static var invite: String { 
@@ -1274,6 +1370,34 @@ internal enum VectorL10n {
   internal static var mediaPickerSelect: String { 
     return VectorL10n.tr("Vector", "media_picker_select") 
   }
+  /// Media library
+  internal static var mediaPickerTitle: String { 
+    return VectorL10n.tr("Vector", "media_picker_title") 
+  }
+  /// Audio
+  internal static var mediaTypeAccessibilityAudio: String { 
+    return VectorL10n.tr("Vector", "media_type_accessibility_audio") 
+  }
+  /// File
+  internal static var mediaTypeAccessibilityFile: String { 
+    return VectorL10n.tr("Vector", "media_type_accessibility_file") 
+  }
+  /// Image
+  internal static var mediaTypeAccessibilityImage: String { 
+    return VectorL10n.tr("Vector", "media_type_accessibility_image") 
+  }
+  /// Location
+  internal static var mediaTypeAccessibilityLocation: String { 
+    return VectorL10n.tr("Vector", "media_type_accessibility_location") 
+  }
+  /// Sticker
+  internal static var mediaTypeAccessibilitySticker: String { 
+    return VectorL10n.tr("Vector", "media_type_accessibility_sticker") 
+  }
+  /// Video
+  internal static var mediaTypeAccessibilityVideo: String { 
+    return VectorL10n.tr("Vector", "media_type_accessibility_video") 
+  }
   /// The Internet connection appears to be offline.
   internal static var networkOfflinePrompt: String { 
     return VectorL10n.tr("Vector", "network_offline_prompt") 
@@ -1314,6 +1438,10 @@ internal enum VectorL10n {
   internal static var peopleNoConversation: String { 
     return VectorL10n.tr("Vector", "people_no_conversation") 
   }
+  /// %@ doesn't have permission to access photo library, please change privacy settings
+  internal static func photoLibraryAccessNotGranted(_ p1: String) -> String {
+    return VectorL10n.tr("Vector", "photo_library_access_not_granted", p1)
+  }
   /// Preview
   internal static var preview: String { 
     return VectorL10n.tr("Vector", "preview") 
@@ -1325,6 +1453,10 @@ internal enum VectorL10n {
   /// You seem to be shaking the phone in frustration. Would you like to submit a bug report?
   internal static var rageShakePrompt: String { 
     return VectorL10n.tr("Vector", "rage_shake_prompt") 
+  }
+  /// Reactions
+  internal static var reactionHistoryTitle: String { 
+    return VectorL10n.tr("Vector", "reaction_history_title") 
   }
   /// Read Receipts List
   internal static var readReceiptsList: String { 
@@ -1353,6 +1485,34 @@ internal enum VectorL10n {
   /// Retry
   internal static var retry: String { 
     return VectorL10n.tr("Vector", "retry") 
+  }
+  /// Call
+  internal static var roomAccessibilityCall: String { 
+    return VectorL10n.tr("Vector", "room_accessibility_call") 
+  }
+  /// Hang up
+  internal static var roomAccessibilityHangup: String { 
+    return VectorL10n.tr("Vector", "room_accessibility_hangup") 
+  }
+  /// Integrations
+  internal static var roomAccessibilityIntegrations: String { 
+    return VectorL10n.tr("Vector", "room_accessibility_integrations") 
+  }
+  /// Search
+  internal static var roomAccessibilitySearch: String { 
+    return VectorL10n.tr("Vector", "room_accessibility_search") 
+  }
+  /// Upload
+  internal static var roomAccessibilityUpload: String { 
+    return VectorL10n.tr("Vector", "room_accessibility_upload") 
+  }
+  /// Scroll to bottom
+  internal static var roomAccessiblityScrollToBottom: String { 
+    return VectorL10n.tr("Vector", "room_accessiblity_scroll_to_bottom") 
+  }
+  /// Take photo or video
+  internal static var roomActionCamera: String { 
+    return VectorL10n.tr("Vector", "room_action_camera") 
   }
   /// Reply
   internal static var roomActionReply: String { 
@@ -1737,6 +1897,10 @@ internal enum VectorL10n {
   /// Quote
   internal static var roomEventActionQuote: String { 
     return VectorL10n.tr("Vector", "room_event_action_quote") 
+  }
+  /// Reaction history
+  internal static var roomEventActionReactionHistory: String { 
+    return VectorL10n.tr("Vector", "room_event_action_reaction_history") 
   }
   /// Show all
   internal static var roomEventActionReactionShowAll: String { 
@@ -2857,6 +3021,10 @@ internal enum VectorL10n {
   /// You need permission to manage widgets in this room
   internal static var widgetNoPowerToManage: String { 
     return VectorL10n.tr("Vector", "widget_no_power_to_manage") 
+  }
+  /// Integrations
+  internal static var widgetPickerTitle: String { 
+    return VectorL10n.tr("Vector", "widget_picker_title") 
   }
   /// You don't currently have any stickerpacks enabled.
   internal static var widgetStickerPickerNoStickerpacksAlert: String { 

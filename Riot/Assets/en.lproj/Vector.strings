@@ -115,6 +115,20 @@
 "auth_add_email_and_phone_warning" = "Registration with email and phone number at once is not supported yet until the api exists. Only the phone number will be taken into account. You may add your email to your profile in settings.";
 "auth_accept_policies" = "Please review and accept the policies of this homeserver:";
 "auth_autodiscover_invalid_response" = "Invalid homeserver discovery response";
+"auth_softlogout_signed_out" = "You’re signed out";
+"auth_softlogout_sign_in" = "Sign In";
+"auth_softlogout_reason" = "Your homeserver (%1$@) admin has signed you out of your account %2$@ (%3$@).";
+"auth_softlogout_recover_encryption_keys" = "Sign in to recover encryption keys stored exclusively on this device. You need them to read all of your secure messages on any device.";
+"auth_softlogout_clear_data" = "Clear personal data";
+"auth_softlogout_clear_data_message_1" = "Warning: Your personal data (including encryption keys) is still stored on this device.";
+"auth_softlogout_clear_data_message_2" = "Clear it if you're finished using this device, or want to sign in to another account.";
+"auth_softlogout_clear_data_button" = "Clear all data";
+"auth_softlogout_clear_data_sign_out_title" = "Are you sure?";
+"auth_softlogout_clear_data_sign_out_msg" = "Are you sure you want to clear all data currently stored on this device? Sign in again to access your account data and messages.";
+"auth_softlogout_clear_data_sign_out" = "Sign out";
+
+// Errors
+"error_user_already_logged_in" = "It looks like you’re trying to connect to another homeserver. Do you want to sign out?";
 
 // Chat creation
 "room_creation_title" = "New Chat";
@@ -236,6 +250,7 @@
 
 // Chat
 "room_jump_to_first_unread" = "Jump to first unread message";
+"room_accessiblity_scroll_to_bottom" = "Scroll to bottom";
 "room_new_message_notification" = "%d new message";
 "room_new_messages_notification" = "%d new messages";
 "room_one_user_is_typing" = "%@ is typing…";
@@ -283,8 +298,10 @@
 "room_event_action_edit" = "Edit";
 "room_event_action_reaction_show_all" = "Show all";
 "room_event_action_reaction_show_less" = "Show less";
+"room_event_action_reaction_history" = "Reaction history";
 "room_warning_about_encryption" = "End-to-end encryption is in beta and may not be reliable.\n\nYou should not yet trust it to secure data.\n\nDevices will not yet be able to decrypt history from before they joined the room.\n\nEncrypted messages will not be visible on clients that do not yet implement encryption.";
 "room_event_failed_to_send" = "Failed to send";
+"room_action_camera" = "Take photo or video";
 "room_action_send_photo_or_video" = "Send photo or video";
 "room_action_send_sticker" = "Send sticker";
 "room_action_send_file" = "Send file";
@@ -301,6 +318,18 @@
 "room_resource_usage_limit_reached_message_2" = "some users will not be able to log in.";
 "room_resource_usage_limit_reached_message_contact_3" = " to get this limit increased.";
 "room_message_edits_history_title" = "Message edits";
+"room_accessibility_search" = "Search";
+"room_accessibility_integrations" = "Integrations";
+"room_accessibility_upload" = "Upload";
+"room_accessibility_call" = "Call";
+"room_accessibility_hangup" = "Hang up";
+
+"media_type_accessibility_image" = "Image";
+"media_type_accessibility_audio" = "Audio";
+"media_type_accessibility_video" = "Video";
+"media_type_accessibility_location" = "Location";
+"media_type_accessibility_file" = "File";
+"media_type_accessibility_sticker" = "Sticker";
 
 // Unknown devices
 "unknown_devices_alert_title" = "Room contains unknown devices";
@@ -561,8 +590,13 @@
 "receipt_status_read" = "Read: ";
 
 // Media picker
+"media_picker_title" = "Media library";
 "media_picker_library" = "Library";
 "media_picker_select" = "Select";
+
+// Image picker
+"image_picker_action_camera" = "Take photo";
+"image_picker_action_library" = "Choose from library";
 
 // Directory
 "directory_title" = "Directory";
@@ -594,6 +628,8 @@
 "rage_shake_prompt" = "You seem to be shaking the phone in frustration. Would you like to submit a bug report?";
 "do_not_ask_again" = "Do not ask again";
 "camera_access_not_granted" = "%@ doesn't have permission to use Camera, please change privacy settings";
+"camera_unavailable" = "The camera is unavailable on your device";
+"photo_library_access_not_granted" = "%@ doesn't have permission to access photo library, please change privacy settings";
 "large_badge_value_k_format" = "%.1fK";
 "room_does_not_exist" = "%@ does not exist";
 
@@ -653,6 +689,9 @@
 "widget_integration_missing_room_id" = "Missing room_id in request.";
 "widget_integration_missing_user_id" = "Missing user_id in request.";
 "widget_integration_room_not_visible" = "Room %@ is not visible.";
+
+// Widget Picker
+"widget_picker_title" = "Integrations";
 
 // Share extension
 "share_extension_auth_prompt" = "Login in the main app to share content";
@@ -904,3 +943,18 @@
 // MARK: File upload
 "file_upload_error_title" = "File upload";
 "file_upload_error_unsupported_file_type_message" = "File type not supported.";
+
+// MARK: Emoji picker
+"emoji_picker_title" = "Reactions";
+
+"emoji_picker_people_category" = "Smileys & People";
+"emoji_picker_nature_category" = "Animals & Nature";
+"emoji_picker_foods_category" = "Food & Drink";
+"emoji_picker_activity_category" = "Activities";
+"emoji_picker_places_category" = "Travel & Places";
+"emoji_picker_objects_category" = "Objects";
+"emoji_picker_symbols_category" = "Symbols";
+"emoji_picker_flags_category" = "Flags";
+
+// MARK: Reaction history
+"reaction_history_title" = "Reactions";

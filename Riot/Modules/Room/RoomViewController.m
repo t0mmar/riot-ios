@@ -123,8 +123,9 @@
 
 #import "Riot-Swift.h"
 
-@interface RoomViewController () <UISearchBarDelegate, UIGestureRecognizerDelegate, RoomTitleViewTapGestureDelegate, RoomParticipantsViewControllerDelegate, MXKRoomMemberDetailsViewControllerDelegate, ContactsTableViewControllerDelegate, MXServerNoticesDelegate, RoomContextualMenuViewControllerDelegate,
-    ReactionsMenuViewModelCoordinatorDelegate, EditHistoryCoordinatorBridgePresenterDelegate, MXKDocumentPickerPresenterDelegate>
+@interface RoomViewController () <UISearchBarDelegate, UIGestureRecognizerDelegate, UIScrollViewAccessibilityDelegate, RoomTitleViewTapGestureDelegate, RoomParticipantsViewControllerDelegate, MXKRoomMemberDetailsViewControllerDelegate, ContactsTableViewControllerDelegate, MXServerNoticesDelegate, RoomContextualMenuViewControllerDelegate,
+    ReactionsMenuViewModelCoordinatorDelegate, EditHistoryCoordinatorBridgePresenterDelegate, MXKDocumentPickerPresenterDelegate, EmojiPickerCoordinatorBridgePresenterDelegate,
+    ReactionHistoryCoordinatorBridgePresenterDelegate, CameraPresenterDelegate, MediaPickerCoordinatorBridgePresenterDelegate>
 {
     // The expanded header
     ExpandedRoomTitleView *expandedHeader;
@@ -223,6 +224,10 @@
 @property (nonatomic, strong) NSString *textMessageBeforeEditing;
 @property (nonatomic, strong) EditHistoryCoordinatorBridgePresenter *editHistoryPresenter;
 @property (nonatomic, strong) MXKDocumentPickerPresenter *documentPickerPresenter;
+@property (nonatomic, strong) EmojiPickerCoordinatorBridgePresenter *emojiPickerCoordinatorBridgePresenter;
+@property (nonatomic, strong) ReactionHistoryCoordinatorBridgePresenter *reactionHistoryCoordinatorBridgePresenter;
+@property (nonatomic, strong) CameraPresenter *cameraPresenter;
+@property (nonatomic, strong) MediaPickerCoordinatorBridgePresenter *mediaPickerPresenter;
 
 @end
 
@@ -808,6 +813,92 @@
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
 }
 
+#pragma mark - Accessibility
+
+// Handle scrolling when VoiceOver is on because it does not work well if we let the system do:
+// VoiceOver loses the focus on the tableview
+- (BOOL)accessibilityScroll:(UIAccessibilityScrollDirection)direction
+{
+    BOOL canScroll = YES;
+
+    // Scroll by one page
+    CGFloat tableViewHeight = self.bubblesTableView.frame.size.height;
+
+    CGPoint offset = self.bubblesTableView.contentOffset;
+    switch (direction)
+    {
+        case UIAccessibilityScrollDirectionUp:
+            offset.y -= tableViewHeight;
+            break;
+
+        case UIAccessibilityScrollDirectionDown:
+            offset.y += tableViewHeight;
+            break;
+
+        default:
+            break;
+    }
+
+    if (offset.y < 0 && ![self.roomDataSource.timeline canPaginate:MXTimelineDirectionBackwards])
+    {
+        // Can't paginate more. Let's stick on the first item
+        UIView *focusedView = [self firstCellWithAccessibilityDataInCells:self.bubblesTableView.visibleCells.objectEnumerator];
+        UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, focusedView);
+        canScroll = NO;
+    }
+    else if (offset.y > self.bubblesTableView.contentSize.height - tableViewHeight
+             && ![self.roomDataSource.timeline canPaginate:MXTimelineDirectionForwards])
+    {
+        // Can't paginate more. Let's stick on the last item with accessibility
+        UIView *focusedView = [self firstCellWithAccessibilityDataInCells:self.bubblesTableView.visibleCells.reverseObjectEnumerator];
+        UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, focusedView);
+        canScroll = NO;
+    }
+    else
+    {
+        // Disable VoiceOver while scrolling
+        self.bubblesTableView.accessibilityElementsHidden = YES;
+
+        [self.bubblesTableView setContentOffset:offset animated:NO];
+
+        NSEnumerator<UITableViewCell*> *cells;
+        if (direction == UIAccessibilityScrollDirectionUp)
+        {
+            cells = self.bubblesTableView.visibleCells.objectEnumerator;
+        }
+        else
+        {
+            cells = self.bubblesTableView.visibleCells.reverseObjectEnumerator;
+        }
+        UIView *cell = [self firstCellWithAccessibilityDataInCells:cells];
+
+        self.bubblesTableView.accessibilityElementsHidden = NO;
+
+        // Force VoiceOver to focus on a visible item
+        UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, cell);
+    }
+
+    // If we cannot scroll, let VoiceOver indicates the border
+    return canScroll;
+}
+
+- (UIView*)firstCellWithAccessibilityDataInCells:(NSEnumerator<UITableViewCell*>*)cells
+{
+    UIView *view;
+
+    for (UITableViewCell *cell in cells)
+    {
+        if (![cell isKindOfClass:[RoomEmptyBubbleCell class]])
+        {
+            view = cell;
+            break;
+        }
+    }
+
+    return view;
+}
+
+
 #pragma mark - Override MXKRoomViewController
 
 - (void)onMatrixSessionChange
@@ -1367,12 +1458,16 @@
                     icon = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
 
                     self.navigationItem.rightBarButtonItems[1].image = icon;
+                    self.navigationItem.rightBarButtonItems[1].accessibilityLabel = NSLocalizedStringFromTable(@"room_accessibility_integrations", @"Vector", nil);
                 }
                 else
                 {
                     // Reset original icon
                     self.navigationItem.rightBarButtonItems[1].image = [UIImage imageNamed:@"apps-icon"];
+                    self.navigationItem.rightBarButtonItems[1].accessibilityLabel = NSLocalizedStringFromTable(@"room_accessibility_integrations", @"Vector", nil);
                 }
+                
+                self.navigationItem.rightBarButtonItems.firstObject.accessibilityLabel = NSLocalizedStringFromTable(@"room_accessibility_search", @"Vector", nil);
             }
 
             // Do not change title view class here if the expanded header is visible.
@@ -1528,6 +1623,54 @@
     {
         [self showContextualMenuForEvent:event fromSingleTapGesture:NO cell:cell animated:YES];
     }
+}
+
+- (void)showReactionHistoryForEventId:(NSString*)eventId animated:(BOOL)animated
+{
+    if (self.reactionHistoryCoordinatorBridgePresenter.isPresenting)
+    {
+        return;
+    }
+    
+    ReactionHistoryCoordinatorBridgePresenter *presenter = [[ReactionHistoryCoordinatorBridgePresenter alloc] initWithSession:self.mainSession roomId:self.roomDataSource.roomId eventId:eventId];
+    presenter.delegate = self;
+    
+    [presenter presentFrom:self animated:animated];
+    
+    self.reactionHistoryCoordinatorBridgePresenter = presenter;
+}
+
+- (void)showCameraControllerAnimated:(BOOL)animated
+{
+    CameraPresenter *cameraPresenter = [CameraPresenter new];
+    cameraPresenter.delegate = self;
+    [cameraPresenter presentCameraFrom:self with:@[MXKUTI.image, MXKUTI.movie] animated:YES];
+
+    self.cameraPresenter = cameraPresenter;
+}
+
+
+- (void)showMediaPickerAnimated:(BOOL)animated
+{
+    MediaPickerCoordinatorBridgePresenter *mediaPickerPresenter = [[MediaPickerCoordinatorBridgePresenter alloc] initWithSession:self.mainSession mediaUTIs:@[MXKUTI.image, MXKUTI.movie] allowsMultipleSelection:YES];
+    mediaPickerPresenter.delegate = self;
+    
+    UIView *sourceView;
+    
+    RoomInputToolbarView *roomInputToolbarView = [self inputToolbarViewAsRoomInputToolbarView];
+    
+    if (roomInputToolbarView)
+    {
+        sourceView = roomInputToolbarView.attachMediaButton;
+    }
+    else
+    {
+        sourceView = self.inputToolbarView;
+    }
+
+    [mediaPickerPresenter presentFrom:self sourceView:sourceView sourceRect:sourceView.bounds animated:YES];
+    
+    self.mediaPickerPresenter = mediaPickerPresenter;
 }
 
 #pragma mark - Hide/Show expanded header
@@ -2172,6 +2315,14 @@
                 [self handleLongPressFromCell:cell withTappedEvent:tappedEvent];
             }
         }
+        else if ([actionIdentifier isEqualToString:kMXKRoomBubbleCellLongPressOnReactionView])
+        {
+            NSString *tappedEventId = userInfo[kMXKRoomBubbleCellEventIdKey];
+            if (tappedEventId)
+            {
+                [self showReactionHistoryForEventId:tappedEventId animated:YES];
+            }
+        }
         else
         {
             // Keep default implementation for other actions
@@ -2532,6 +2683,20 @@
                                                            
                                                        }]];
         
+        // Add reaction history if event contains reactions
+        if (roomBubbleTableViewCell.bubbleData.reactions[selectedEvent.eventId].aggregatedReactionsWithNonZeroCount)
+        {
+            [currentAlert addAction:[UIAlertAction actionWithTitle:NSLocalizedStringFromTable(@"room_event_action_reaction_history", @"Vector", nil)
+                                                             style:UIAlertActionStyleDefault
+                                                           handler:^(UIAlertAction * action) {
+                                                               
+                                                               [self cancelEventSelection];
+                                                               
+                                                               // Show reaction history
+                                                               [self showReactionHistoryForEventId:selectedEvent.eventId animated:YES];
+                                                           }]];
+        }
+        
         [currentAlert addAction:[UIAlertAction actionWithTitle:NSLocalizedStringFromTable(@"room_event_action_view_source", @"Vector", nil)
                                                          style:UIAlertActionStyleDefault
                                                        handler:^(UIAlertAction * action) {
@@ -2710,19 +2875,9 @@
     // Do not display empty action sheet
     if (currentAlert.actions.count > 1)
     {
-        NSArray *components = roomBubbleTableViewCell.bubbleData.bubbleComponents;
+        NSInteger bubbleComponentIndex = [roomBubbleTableViewCell.bubbleData bubbleComponentIndexForEventId:selectedEvent.eventId];
         
-        NSInteger index = 0;
-        for (MXKRoomBubbleComponent *component in components)
-        {
-            if ([component.event.eventId isEqualToString:selectedEvent.eventId])
-            {
-                break;
-            }
-            index++;
-        }
-        
-        CGRect sourceRect = [roomBubbleTableViewCell componentFrameInContentViewForIndex:index];
+        CGRect sourceRect = [roomBubbleTableViewCell componentFrameInContentViewForIndex:bubbleComponentIndex];
         
         [currentAlert mxk_setAccessibilityIdentifier:@"RoomVCEventMenuAlert"];
         [currentAlert popoverPresentationController].sourceView = roomBubbleTableViewCell;
@@ -3366,6 +3521,16 @@
     [documentPickerPresenter presentDocumentPickerWith:allowedUTIs from:self animated:YES completion:nil];
     
     self.documentPickerPresenter = documentPickerPresenter;
+}
+
+- (void)roomInputToolbarViewDidTapCamera:(MXKRoomInputToolbarView*)toolbarView
+{
+    [self showCameraControllerAnimated:YES];
+}
+
+- (void)roomInputToolbarViewDidTapMediaLibrary:(MXKRoomInputToolbarView*)toolbarView
+{
+    [self showMediaPickerAnimated:YES];
 }
 
 #pragma mark - RoomParticipantsViewControllerDelegate
@@ -5200,15 +5365,7 @@
         MXKRoomBubbleCellData *bubbleCellData = roomBubbleTableViewCell.bubbleData;
         NSArray *bubbleComponents = bubbleCellData.bubbleComponents;
         
-        NSInteger foundComponentIndex = [bubbleComponents indexOfObjectPassingTest:^BOOL(MXKRoomBubbleComponent * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-            if (obj.event.eventId == selectedEventId)
-            {
-                *stop = YES;
-                return YES;
-            }
-            return NO;
-        }];
-        
+        NSInteger foundComponentIndex = [bubbleCellData bubbleComponentIndexForEventId:event.eventId];
         CGRect bubbleComponentFrame;
         
         if (bubbleComponents.count > 0)
@@ -5334,6 +5491,37 @@
     }];
 }
 
+- (void)reactionsMenuViewModelDidTapMoreReactions:(ReactionsMenuViewModel *)viewModel forEventId:(NSString *)eventId
+{
+    [self hideContextualMenuAnimated:YES];
+    
+    EmojiPickerCoordinatorBridgePresenter *emojiPickerCoordinatorBridgePresenter = [[EmojiPickerCoordinatorBridgePresenter alloc] initWithSession:self.mainSession roomId:self.roomDataSource.roomId eventId:eventId];
+    emojiPickerCoordinatorBridgePresenter.delegate = self;
+    
+    NSInteger cellRow = [self.roomDataSource indexOfCellDataWithEventId:eventId];
+    
+    UIView *sourceView;
+    CGRect sourceRect = CGRectNull;
+    
+    if (cellRow >= 0)
+    {
+        NSIndexPath *cellIndexPath = [NSIndexPath indexPathForRow:cellRow inSection:0];        
+        UITableViewCell *cell = [self.bubblesTableView cellForRowAtIndexPath:cellIndexPath];
+        sourceView = cell;
+        
+        if ([cell isKindOfClass:[MXKRoomBubbleTableViewCell class]])
+        {
+            MXKRoomBubbleTableViewCell *roomBubbleTableViewCell = (MXKRoomBubbleTableViewCell*)cell;
+            NSInteger bubbleComponentIndex = [roomBubbleTableViewCell.bubbleData bubbleComponentIndexForEventId:eventId];
+            sourceRect = [roomBubbleTableViewCell componentFrameInContentViewForIndex:bubbleComponentIndex];
+        }
+        
+    }
+    
+    [emojiPickerCoordinatorBridgePresenter presentFrom:self sourceView:sourceView sourceRect:sourceRect animated:YES];
+    self.emojiPickerCoordinatorBridgePresenter = emojiPickerCoordinatorBridgePresenter;
+}
+
 #pragma mark -
 
 - (void)showEditHistoryForEventId:(NSString*)eventId animated:(BOOL)animated
@@ -5398,6 +5586,132 @@
         
         [[AppDelegate theDelegate] showAlertWithTitle:NSLocalizedStringFromTable(@"file_upload_error_title", @"Vector", nil)
                                               message:NSLocalizedStringFromTable(@"file_upload_error_unsupported_file_type_message", @"Vector", nil)];
+    }
+}
+
+#pragma mark - EmojiPickerCoordinatorBridgePresenterDelegate
+
+- (void)emojiPickerCoordinatorBridgePresenter:(EmojiPickerCoordinatorBridgePresenter *)coordinatorBridgePresenter didAddEmoji:(NSString *)emoji forEventId:(NSString *)eventId
+{
+    MXWeakify(self);
+    
+    [coordinatorBridgePresenter dismissWithAnimated:YES completion:^{
+        [self.roomDataSource addReaction:emoji forEventId:eventId success:^{
+            
+        } failure:^(NSError *error) {
+            MXStrongifyAndReturnIfNil(self);
+            
+            [self.errorPresenter presentErrorFromViewController:self forError:error animated:YES handler:nil];
+        }];
+    }];
+    self.emojiPickerCoordinatorBridgePresenter = nil;
+}
+
+- (void)emojiPickerCoordinatorBridgePresenter:(EmojiPickerCoordinatorBridgePresenter *)coordinatorBridgePresenter didRemoveEmoji:(NSString *)emoji forEventId:(NSString *)eventId
+{
+    MXWeakify(self);
+    
+    [coordinatorBridgePresenter dismissWithAnimated:YES completion:^{
+        
+        [self.roomDataSource removeReaction:emoji forEventId:eventId success:^{
+            
+        } failure:^(NSError *error) {
+            MXStrongifyAndReturnIfNil(self);
+            
+            [self.errorPresenter presentErrorFromViewController:self forError:error animated:YES handler:nil];
+        }];
+    }];
+    self.emojiPickerCoordinatorBridgePresenter = nil;
+}
+
+- (void)emojiPickerCoordinatorBridgePresenterDidCancel:(EmojiPickerCoordinatorBridgePresenter *)coordinatorBridgePresenter
+{
+    [coordinatorBridgePresenter dismissWithAnimated:YES completion:nil];
+    self.emojiPickerCoordinatorBridgePresenter = nil;
+}
+
+#pragma mark - ReactionHistoryCoordinatorBridgePresenterDelegate
+
+- (void)reactionHistoryCoordinatorBridgePresenterDelegateDidClose:(ReactionHistoryCoordinatorBridgePresenter *)coordinatorBridgePresenter
+{
+    [coordinatorBridgePresenter dismissWithAnimated:YES completion:^{
+        self.reactionHistoryCoordinatorBridgePresenter = nil;
+    }];
+}
+
+#pragma mark - CameraPresenterDelegate
+
+- (void)cameraPresenterDidCancel:(CameraPresenter *)cameraPresenter
+{
+    [cameraPresenter dismissWithAnimated:YES completion:nil];
+    self.cameraPresenter = nil;
+}
+
+- (void)cameraPresenter:(CameraPresenter *)cameraPresenter didSelectImageData:(NSData *)imageData withUTI:(MXKUTI *)uti
+{
+    [cameraPresenter dismissWithAnimated:YES completion:nil];
+    self.cameraPresenter = nil;
+    
+    RoomInputToolbarView *roomInputToolbarView = [self inputToolbarViewAsRoomInputToolbarView];
+    if (roomInputToolbarView)
+    {
+        [roomInputToolbarView sendSelectedImage:imageData withMimeType:uti.mimeType andCompressionMode:MXKRoomInputToolbarCompressionModePrompt isPhotoLibraryAsset:NO];
+    }
+}
+
+- (void)cameraPresenter:(CameraPresenter *)cameraPresenter didSelectVideoAt:(NSURL *)url
+{
+    [cameraPresenter dismissWithAnimated:YES completion:nil];
+    self.cameraPresenter = nil;
+    
+    RoomInputToolbarView *roomInputToolbarView = [self inputToolbarViewAsRoomInputToolbarView];
+    if (roomInputToolbarView)
+    {
+        [roomInputToolbarView sendSelectedVideo:url isPhotoLibraryAsset:NO];
+    }
+}
+
+#pragma mark - MediaPickerCoordinatorBridgePresenterDelegate
+
+- (void)mediaPickerCoordinatorBridgePresenterDidCancel:(MediaPickerCoordinatorBridgePresenter *)coordinatorBridgePresenter
+{
+    [coordinatorBridgePresenter dismissWithAnimated:YES completion:nil];
+    self.mediaPickerPresenter = nil;
+}
+
+- (void)mediaPickerCoordinatorBridgePresenter:(MediaPickerCoordinatorBridgePresenter *)coordinatorBridgePresenter didSelectImageData:(NSData *)imageData withUTI:(MXKUTI *)uti
+{
+    [coordinatorBridgePresenter dismissWithAnimated:YES completion:nil];
+    self.mediaPickerPresenter = nil;
+    
+    RoomInputToolbarView *roomInputToolbarView = [self inputToolbarViewAsRoomInputToolbarView];
+    if (roomInputToolbarView)
+    {
+        [roomInputToolbarView sendSelectedImage:imageData withMimeType:uti.mimeType andCompressionMode:MXKRoomInputToolbarCompressionModePrompt isPhotoLibraryAsset:YES];
+    }
+}
+
+- (void)mediaPickerCoordinatorBridgePresenter:(MediaPickerCoordinatorBridgePresenter *)coordinatorBridgePresenter didSelectVideoAt:(NSURL *)url
+{
+    [coordinatorBridgePresenter dismissWithAnimated:YES completion:nil];
+    self.mediaPickerPresenter = nil;
+    
+    RoomInputToolbarView *roomInputToolbarView = [self inputToolbarViewAsRoomInputToolbarView];
+    if (roomInputToolbarView)
+    {
+        [roomInputToolbarView sendSelectedVideo:url isPhotoLibraryAsset:YES];
+    }
+}
+
+- (void)mediaPickerCoordinatorBridgePresenter:(MediaPickerCoordinatorBridgePresenter *)coordinatorBridgePresenter didSelectAssets:(NSArray<PHAsset *> *)assets
+{
+    [coordinatorBridgePresenter dismissWithAnimated:YES completion:nil];
+    self.mediaPickerPresenter = nil;
+    
+    RoomInputToolbarView *roomInputToolbarView = [self inputToolbarViewAsRoomInputToolbarView];
+    if (roomInputToolbarView)
+    {
+        [roomInputToolbarView sendSelectedAssets:assets withCompressionMode:MXKRoomInputToolbarCompressionModePrompt];
     }
 }
 

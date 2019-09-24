@@ -1,7 +1,8 @@
 /*
  Copyright 2015 OpenMarket Ltd
  Copyright 2017 Vector Creations Ltd
- 
+ Copyright 2019 New Vector Ltd
+
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
@@ -22,8 +23,9 @@
 
 #import "AuthInputsView.h"
 #import "ForgotPasswordInputsView.h"
+#import "AuthFallBackViewController.h"
 
-@interface AuthenticationViewController ()
+@interface AuthenticationViewController () <AuthFallBackViewControllerDelegate>
 {
     /**
      Store the potential login error received by using a default homeserver different from matrix.org
@@ -45,6 +47,8 @@
      Server discovery.
      */
     MXAutoDiscovery *autoDiscovery;
+
+    AuthFallBackViewController *authFallBackViewController;
 }
 
 @end
@@ -107,6 +111,14 @@
     [self.customServersTickButton setImage:[UIImage imageNamed:@"selection_untick"] forState:UIControlStateHighlighted];
     
     [self hideCustomServers:YES];
+
+    // Soft logout section
+    self.softLogoutClearDataButton.layer.cornerRadius = 5;
+    self.softLogoutClearDataButton.clipsToBounds = YES;
+    [self.softLogoutClearDataButton setTitle:NSLocalizedStringFromTable(@"auth_softlogout_clear_data_button", @"Vector", nil) forState:UIControlStateNormal];
+    [self.softLogoutClearDataButton setTitle:NSLocalizedStringFromTable(@"auth_softlogout_clear_data_button", @"Vector", nil) forState:UIControlStateHighlighted];
+    self.softLogoutClearDataButton.enabled = YES;
+    self.softLogoutClearDataContainer.hidden = YES;
     
     // The view controller dismiss itself on successful login.
     self.delegate = self;
@@ -194,7 +206,10 @@
     self.identityServerLabel.textColor = ThemeService.shared.theme.textSecondaryColor;
 
     self.activityIndicator.backgroundColor = ThemeService.shared.theme.overlayBackgroundColor;
-    
+
+    self.softLogoutClearDataLabel.textColor = ThemeService.shared.theme.textPrimaryColor;
+    self.softLogoutClearDataButton.backgroundColor = ThemeService.shared.theme.warningColor;
+
     [self.authInputsView customizeViewRendering];
     
     [self setNeedsStatusBarAppearanceUpdate];
@@ -288,6 +303,7 @@
     }
     
     [self updateForgotPwdButtonVisibility];
+    [self updateSoftLogoutClearDataContainerVisibility];
 }
 
 - (void)setAuthInputsView:(MXKAuthInputsView *)authInputsView
@@ -366,7 +382,7 @@
         // The right bar button is used to switch the authentication type.
         if (self.authType == MXKAuthenticationTypeLogin)
         {
-            if (!authInputsview.isSingleSignOnRequired)
+            if (!authInputsview.isSingleSignOnRequired && !self.softLogoutCredentials)
             {
                 self.rightBarButtonItem.title = NSLocalizedStringFromTable(@"auth_register", @"Vector", nil);
             }
@@ -395,19 +411,241 @@
     }
 }
 
+
+#pragma mark - Fallback URL display
+
+- (void)showAuthenticationFallBackView:(NSString*)fallbackPage
+{
+    // Skip MatrixKit and use a VC instead
+    if (self.softLogoutCredentials)
+    {
+        // Add device_id as query param of the fallback
+        NSURLComponents *components = [[NSURLComponents alloc] initWithString:fallbackPage];
+
+        NSMutableArray<NSURLQueryItem*> *queryItems = [components.queryItems mutableCopy];
+        if (!queryItems)
+        {
+            queryItems = [NSMutableArray array];
+        }
+
+        [queryItems addObject:[NSURLQueryItem queryItemWithName:@"device_id"
+                                                          value:self.softLogoutCredentials.deviceId]];
+
+        components.queryItems = queryItems;
+
+        fallbackPage = components.URL.absoluteString;
+    }
+
+    [self showAuthenticationFallBackViewController:fallbackPage];
+}
+
+- (void)showAuthenticationFallBackViewController:(NSString*)fallbackPage
+{
+    authFallBackViewController = [[AuthFallBackViewController alloc] initWithURL:fallbackPage];
+    authFallBackViewController.delegate = self;
+
+
+    authFallBackViewController.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(dismissFallBackViewController:)];
+
+    UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:authFallBackViewController];
+    [self presentViewController:navigationController animated:YES completion:nil];
+}
+
+- (void)dismissFallBackViewController:(id)sender
+{
+    [authFallBackViewController dismissViewControllerAnimated:YES completion:nil];
+    authFallBackViewController = nil;
+}
+
+
+#pragma mark AuthFallBackViewControllerDelegate
+
+- (void)authFallBackViewController:(AuthFallBackViewController *)authFallBackViewController
+         didLoginWithLoginResponse:(MXLoginResponse *)loginResponse
+{
+    [authFallBackViewController dismissViewControllerAnimated:YES completion:^{
+        
+        MXCredentials *credentials = [[MXCredentials alloc] initWithLoginResponse:loginResponse andDefaultCredentials:nil];
+        [self onSuccessfulLogin:credentials];
+    }];
+
+    authFallBackViewController = nil;
+}
+
+
+- (void)authFallBackViewControllerDidClose:(AuthFallBackViewController *)authFallBackViewController
+{
+    [self dismissFallBackViewController:nil];
+}
+
+
+- (void)setSoftLogoutCredentials:(MXCredentials *)softLogoutCredentials
+{
+    [super setSoftLogoutCredentials:softLogoutCredentials];
+
+    // Customise the screen for soft logout
+    self.customServersTickButton.hidden = YES;
+    self.rightBarButtonItem.title = nil;
+    self.mainNavigationItem.title = NSLocalizedStringFromTable(@"auth_softlogout_signed_out", @"Vector", nil);
+
+    [self showSoftLogoutClearDataContainer];
+}
+
+- (void)showSoftLogoutClearDataContainer
+{
+    NSMutableAttributedString *message = [[NSMutableAttributedString alloc] initWithString:NSLocalizedStringFromTable(@"auth_softlogout_clear_data", @"Vector", nil)
+                                                                                attributes:@{
+                                                                                             NSFontAttributeName: [UIFont boldSystemFontOfSize:14]
+                                                                                             }];
+
+    [message appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n\n"]];
+
+    NSString *string = [NSString stringWithFormat:@"%@\n\n%@",
+                        NSLocalizedStringFromTable(@"auth_softlogout_clear_data_message_1", @"Vector", nil),
+                        NSLocalizedStringFromTable(@"auth_softlogout_clear_data_message_2", @"Vector", nil)];
+    
+    [message appendAttributedString:[[NSAttributedString alloc] initWithString:string
+                                                                    attributes:@{
+                                                                                 NSFontAttributeName: [UIFont systemFontOfSize:14]
+                                                                                 }]];
+    self.softLogoutClearDataLabel.attributedText = message;
+
+    self.softLogoutClearDataContainer.hidden = NO;
+    [self refreshContentViewHeightConstraint];
+}
+
+- (void)updateSoftLogoutClearDataContainerVisibility
+{
+    // Do not display it in case of forget password flow
+    if (self.softLogoutCredentials && self.authType == MXKAuthenticationTypeLogin)
+    {
+        self.softLogoutClearDataContainer.hidden = NO;
+    }
+    else
+    {
+        self.softLogoutClearDataContainer.hidden = YES;
+    }
+}
+
+- (void)showClearDataAfterSoftLogoutConfirmation
+{
+    // Request confirmation
+    if (alert)
+    {
+        [alert dismissViewControllerAnimated:NO completion:nil];
+    }
+
+    alert = [UIAlertController alertControllerWithTitle:NSLocalizedStringFromTable(@"auth_softlogout_clear_data_sign_out_title", @"Vector", nil)
+                                                message:NSLocalizedStringFromTable(@"auth_softlogout_clear_data_sign_out_msg", @"Vector", nil)
+                                         preferredStyle:UIAlertControllerStyleAlert];
+
+
+    [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedStringFromTable(@"auth_softlogout_clear_data_sign_out", @"Vector", nil)                                              style:UIAlertActionStyleDestructive
+                                            handler:^(UIAlertAction * action)
+                      {
+                          [self clearDataAfterSoftLogout];
+                      }]];
+
+    MXWeakify(self);
+    [alert addAction:[UIAlertAction actionWithTitle:[NSBundle mxk_localizedStringForKey:@"cancel"]
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(UIAlertAction * action)
+                      {
+                          MXStrongifyAndReturnIfNil(self);
+                          self->alert = nil;
+                      }]];
+
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)clearDataAfterSoftLogout
+{
+    NSLog(@"[AuthenticationVC] clearDataAfterSoftLogout %@", self.softLogoutCredentials.userId);
+
+    // Use AppDelegate so that we reset app settings and this auth screen
+    [[AppDelegate theDelegate] logoutSendingRequestServer:YES completion:^(BOOL isLoggedOut) {
+        NSLog(@"[AuthenticationVC] Complete. isLoggedOut: %@", @(isLoggedOut));
+    }];
+}
+
+/**
+ Filter and prioritise flows supported by the app.
+
+ @param authSession the auth session coming from the HS.
+ @return a new auth session
+ */
+- (MXAuthenticationSession*)handleSupportedFlowsInAuthenticationSession:(MXAuthenticationSession *)authSession
+{
+    MXLoginFlow *ssoFlow;
+    NSMutableArray *supportedFlows = [NSMutableArray array];
+
+    for (MXLoginFlow *flow in authSession.flows)
+    {
+        // Remove known flows we do not support
+        if (![flow.type isEqualToString:kMXLoginFlowTypeToken])
+        {
+            NSLog(@"[AuthenticationVC] handleSupportedFlowsInAuthenticationSession: Filter out flow %@", flow.type);
+            [supportedFlows addObject:flow];
+        }
+
+        // Prioritise SSO over other flows
+        if ([flow.type isEqualToString:kMXLoginFlowTypeSSO]
+            || [flow.type isEqualToString:kMXLoginFlowTypeCAS])
+        {
+            NSLog(@"[AuthenticationVC] handleSupportedFlowsInAuthenticationSession: Prioritise flow %@", flow.type);
+            ssoFlow = flow;
+            break;
+        }
+    }
+
+    if (ssoFlow)
+    {
+        [supportedFlows removeAllObjects];
+        [supportedFlows addObject:ssoFlow];
+    }
+
+    if (supportedFlows.count != authSession.flows.count)
+    {
+        MXAuthenticationSession *updatedAuthSession = [[MXAuthenticationSession alloc] init];
+        updatedAuthSession.session = authSession.session;
+        updatedAuthSession.params = authSession.params;
+        updatedAuthSession.flows = supportedFlows;
+        return updatedAuthSession;
+    }
+    else
+    {
+        return authSession;
+    }
+}
+
 - (void)handleAuthenticationSession:(MXAuthenticationSession *)authSession
 {
+    // Make some cleaning from the server response according to what the app supports
+    authSession = [self handleSupportedFlowsInAuthenticationSession:authSession];
+    
     [super handleAuthenticationSession:authSession];
-
-    // Hide "Forgot password" and "Log in" buttons in case of SSO
-    [self updateForgotPwdButtonVisibility];
 
     AuthInputsView *authInputsview;
     if ([self.authInputsView isKindOfClass:AuthInputsView.class])
     {
         authInputsview = (AuthInputsView*)self.authInputsView;
     }
+
+    // Hide "Forgot password" and "Log in" buttons in case of SSO
+    [self updateForgotPwdButtonVisibility];
+    [self updateSoftLogoutClearDataContainerVisibility];
+
     self.submitButton.hidden = authInputsview.isSingleSignOnRequired;
+
+    // Bind ssoButton again if self.authInputsView has changed
+    [authInputsview.ssoButton addTarget:self action:@selector(onButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+
+    if (authInputsview.isSingleSignOnRequired && self.softLogoutCredentials)
+    {
+        // Remove submitButton so that the 2nd contraint on softLogoutClearDataContainer.top will be applied
+        // That makes softLogoutClearDataContainer appear upper in the screen
+        [self.submitButton removeFromSuperview];
+    }
 }
 
 - (IBAction)onButtonPressed:(id)sender
@@ -526,13 +764,17 @@
     {
         // Do SSO using the fallback URL
         [self showAuthenticationFallBackView];
-
-        [ThemeService.shared.theme applyStyleOnNavigationBar:self.navigationController.navigationBar];
+    }
+    else if (sender == self.softLogoutClearDataButton)
+    {
+        [self showClearDataAfterSoftLogoutConfirmation];
     }
     else
     {
         [super onButtonPressed:sender];
     }
+
+    [self updateSoftLogoutClearDataContainerVisibility];
 }
 
 - (void)onFailureDuringAuthRequest:(NSError *)error
@@ -540,7 +782,7 @@
     // Homeserver migration: When the default homeserver url is different from matrix.org,
     // the login (or forgot pwd) process with an existing matrix.org accounts will then fail.
     // Patch: Falling back to matrix.org HS so we don't break everyone's logins
-    if ([self.homeServerTextField.text isEqualToString:self.defaultHomeServerUrl] && ![self.defaultHomeServerUrl isEqualToString:@"https://matrix.org"])
+    if ([self.homeServerTextField.text isEqualToString:self.defaultHomeServerUrl] && ![self.defaultHomeServerUrl isEqualToString:@"https://matrix.org"] && !self.softLogoutCredentials)
     {
         MXError *mxError = [[MXError alloc] initWithNSError:error];
         
@@ -710,7 +952,13 @@
             }
         }
     }
-    
+
+    if (!self.softLogoutClearDataContainer.isHidden)
+    {
+        // The soft logout clear data section adds more height
+        constant += self.softLogoutClearDataContainer.frame.size.height;
+    }
+
     self.contentViewHeightConstraint.constant = constant;
 }
 

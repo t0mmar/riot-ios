@@ -1,3 +1,42 @@
+Changes in 0.9.5 (2019-09-20)
+===============================================
+
+Bug fix:
+ * VoiceOver: RoomVC: Fix some missing accessibility labels for buttons (#2722).
+ * VoiceOver: RoomVC: Make VoiceOver focus on the contextual menu when selecting an event (#2721).
+ * VoiceOver: RoomVC: Do not lose the focus on the timeline when paginating (with 3 fingers) (#2720).
+ * VoiceOver: RoomVC: No VoiceOver on media (#2726).
+
+Changes in 0.9.4 (2019-09-13)
+===============================================
+
+Improvements:
+ * Authentication: Improve the webview used for SSO (#2715).
+
+Changes in 0.9.3 (2019-09-10)
+===============================================
+
+Improvements:
+ * Support Riot configuration link to customise HS and IS (#2703).
+ * Authentication: Create a way to filter and prioritise flows (with handleSupportedFlowsInAuthenticationSession).
+
+Changes in 0.9.2 (2019-08-08)
+===============================================
+
+Improvements:
+ * Upgrade MatrixKit version ([v0.10.2](https://github.com/matrix-org/matrix-ios-kit/releases/tag/v0.10.2)).
+ * Soft logout: Support soft logout (#2540).
+ * Reactions: Emoji picker (#2370).
+ * Widgets: Whitelist https://scalar-staging.vector.im/api (#2612).
+ * Reactions: Show who reacted (#2591).
+ * Media picking: Use native camera and use separate actions for camera and media picker (#638). 
+
+Bug fix:
+ * Crash when leaving settings due to backup section refresh animation.
+ * Reactions: Do not display reactions on redacted events in timeline.
+ * Fix crash for search bar customisation in iOS13 (#2626).
+ * Build: Fix build based on git tag.
+
 Changes in 0.9.1 (2019-07-17)
 ===============================================
 
